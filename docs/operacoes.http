@@ -1,0 +1,53 @@
+### Exemplos de contratos. A interface realiza estas mesmas operações.
+### A autenticação Basic/sessão e o token CSRF precisam ser configurados no cliente.
+### Demonstre o CRUD pela interface e confira cada operação no Query Editor do Azure SQL.
+### Opcionalmente, use Postman com seu ambiente LOCAL para executar estes contratos.
+### Nunca preencha credenciais neste arquivo e envie ao GitHub.
+@baseUrl = https://SEU_APP.azurewebsites.net
+@clienteId = 1
+@contaId = 1
+
+### Primeiro: GET /api/csrf autenticado, retenha cookie de sessão e token.
+GET {{baseUrl}}/api/csrf
+
+### CREATE Cliente — JSON do request
+POST {{baseUrl}}/api/clientes
+Content-Type: application/json
+X-CSRF-TOKEN: {{csrfToken}}
+
+{"nome":"Ana CP5","email":"ana.cp5@example.com"}
+
+### READ Cliente — GET não possui body JSON
+GET {{baseUrl}}/api/clientes/{{clienteId}}
+
+### UPDATE Cliente
+PUT {{baseUrl}}/api/clientes/{{clienteId}}
+Content-Type: application/json
+X-CSRF-TOKEN: {{csrfToken}}
+
+{"nome":"Ana CP5 Atualizada","email":"ana.cp5@example.com"}
+
+### CREATE Conta — troque clienteId pelo ID real
+POST {{baseUrl}}/api/contas
+Content-Type: application/json
+X-CSRF-TOKEN: {{csrfToken}}
+
+{"clienteId":1,"numero":"CP5-001","saldo":100.00}
+
+### READ Conta
+GET {{baseUrl}}/api/contas/{{contaId}}
+
+### UPDATE Conta
+PUT {{baseUrl}}/api/contas/{{contaId}}
+Content-Type: application/json
+X-CSRF-TOKEN: {{csrfToken}}
+
+{"clienteId":1,"numero":"CP5-001-EDIT","saldo":250.50}
+
+### DELETE Conta — sem body, resposta 204
+DELETE {{baseUrl}}/api/contas/{{contaId}}
+X-CSRF-TOKEN: {{csrfToken}}
+
+### DELETE Cliente — somente depois de apagar suas contas
+DELETE {{baseUrl}}/api/clientes/{{clienteId}}
+X-CSRF-TOKEN: {{csrfToken}}

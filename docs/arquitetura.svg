@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="740" viewBox="0 0 1200 740">
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0 0 L8 3 L0 6Z" fill="#447264"/></marker><style>text{font-family:Arial,sans-serif;fill:#173e35}.title{font-size:26px;font-weight:700}.head{font-size:18px;font-weight:700}.body{font-size:14px}.small{font-size:12px;fill:#527165}.line{fill:none;stroke:#447264;stroke-width:2;marker-end:url(#arrow)}.dash{stroke-dasharray:6 5}.card{fill:#fff;stroke:#b7d1c3;stroke-width:1.5}</style></defs>
+<rect width="1200" height="740" fill="#f4f7f4"/>
+<text x="40" y="48" class="title">DimDim • Arquitetura de implantação</text>
+<text x="40" y="76" class="body">Azure CLI + GitHub Actions · Java 17 · Azure SQL Database · Application Insights</text>
+<rect x="350" y="110" width="810" height="585" rx="18" fill="#eaf4ee" stroke="#9bbfac" stroke-width="2"/>
+<text x="377" y="143" class="head">MICROSOFT AZURE / GRUPO DE RECURSOS DO CHECKPOINT</text>
+<rect x="40" y="184" width="244" height="110" rx="12" class="card"/>
+<rect x="61" y="205" width="30" height="23" rx="3" fill="none" stroke="#447264" stroke-width="2"/>
+<path d="M68 235h16m-8-7v7" stroke="#447264" stroke-width="2"/>
+<text x="106" y="215" class="head">Navegador</text><text x="62" y="257" class="body">Interface web + login</text><text x="62" y="277" class="small">CRUD de clientes e contas</text>
+<rect x="401" y="184" width="278" height="146" rx="12" class="card"/>
+<text x="423" y="216" class="head">Azure App Service</text><text x="423" y="242" class="body">Linux · Java 17 / Spring Boot</text><text x="423" y="265" class="body">HTML + API + JDBC</text><text x="423" y="288" class="small">Agente Application Insights Java</text><text x="423" y="311" class="small">Plano App Service B1</text>
+<path d="M284 240H400" class="line"/><text x="307" y="228" class="small">HTTPS</text>
+<path d="M871 196c0-20 235-20 235 0v109c0 20-235 20-235 0Z" fill="#fff" stroke="#82b4a0" stroke-width="2"/><ellipse cx="988.5" cy="196" rx="117.5" ry="16" fill="#d6e9dc" stroke="#82b4a0" stroke-width="2"/>
+<text x="890" y="232" class="head">Azure SQL Database</text><text x="890" y="257" class="body">Clientes 1:N Contas</text><text x="890" y="279" class="small">Servidor lógico + banco dimdim</text><text x="890" y="301" class="small">PaaS · Basic · PK / FK</text>
+<path d="M679 249H870" class="line"/><text x="713" y="225" class="small">JDBC / TLS</text><text x="713" y="242" class="small">porta 1433</text>
+<rect x="40" y="390" width="244" height="123" rx="12" class="card"/>
+<text x="62" y="425" class="head">GitHub Actions</text><text x="62" y="452" class="body">Maven: build + testes</text><text x="62" y="475" class="body">Publicação de app.jar</text><text x="62" y="497" class="small">Repositório / branch main</text>
+<path d="M284 417H321V309H400" class="line"/><text x="297" y="395" class="small">Deploy</text>
+<rect x="402" y="373" width="278" height="109" rx="12" class="card"/>
+<text x="423" y="405" class="head">Application Insights</text><text x="423" y="432" class="body">Requests · Falhas · SQL deps</text><text x="423" y="457" class="small">Telemetria / correlação / Live Metrics</text>
+<path d="M540 330V372" class="line"/><text x="552" y="354" class="small">Telemetria HTTPS</text>
+<rect x="870" y="373" width="238" height="109" rx="12" class="card"/>
+<text x="891" y="405" class="head">Azure Monitor</text><text x="891" y="432" class="body">Métricas do Azure SQL</text><text x="891" y="457" class="small">CPU · DTU · Sessões · Espaço</text>
+<path d="M988 325V371" class="line"/><text x="1000" y="355" class="small">Métricas</text>
+<rect x="669" y="545" width="324" height="102" rx="12" class="card"/>
+<text x="690" y="577" class="head">Log Analytics Workspace</text><text x="690" y="604" class="body">Telemetria + diagnósticos SQL</text><text x="690" y="628" class="small">Consultas KQL · Retenção configurada</text>
+<path d="M540 482V596H667" class="line"/><path d="M988 482V543" class="line"/>
+<text x="997" y="516" class="small">Diagnósticos</text>
+<rect x="40" y="556" width="244" height="102" rx="12" class="card"/>
+<text x="62" y="589" class="head">Azure CLI / operador</text><text x="62" y="616" class="body">Provisiona e configura</text><text x="62" y="639" class="small">Arquivos em scripts/</text>
+<path d="M284 607H348" class="line dash"/>
+<text x="403" y="655" class="small">OIDC: Microsoft Entra ID</text><text x="403" y="678" class="small">Contributor no grupo do laboratório</text>
+<text x="40" y="718" class="small">Setas contínuas: conexões de execução / implantação / monitoramento. Tracejado: gerenciamento de infraestrutura.</text>
+</svg>

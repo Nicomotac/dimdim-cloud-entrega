@@ -1,0 +1,13 @@
+target/
+.env
+.env.*
+!*.example
+scripts/config.local.sh
+*.log
+.idea/
+.vscode/
+*.iml
+__pycache__/
+evidencias/
+docs/entrega.json
+*_webapp.pdf

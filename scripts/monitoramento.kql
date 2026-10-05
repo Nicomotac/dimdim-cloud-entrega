@@ -1,0 +1,40 @@
+// Execute UMA consulta por vez em Application Insights > Logs (escopo do componente).
+requests
+| where timestamp > ago(1h)
+| project timestamp, name, resultCode, success, duration, operation_Id
+| order by timestamp desc
+
+// Chamadas JDBC/SQL: dependências da aplicação; não são métricas do servidor SQL.
+dependencies
+| where timestamp > ago(1h)
+| where type has "SQL"
+| project timestamp, name, target, type, success, duration, operation_Id
+| order by timestamp desc
+
+// Correlação de uma requisição com suas chamadas ao banco.
+requests
+| where timestamp > ago(1h)
+| where name has "/api/"
+| project operation_Id, requisicao=name, http=resultCode
+| join kind=inner (dependencies | where timestamp > ago(1h) | where type has "SQL"
+    | project operation_Id, dependencia=name, duracao=duration, sucesso=success) on operation_Id
+| take 100
+
+// Falhas esperadas: 409 ao excluir cliente com contas e 404 após DELETE.
+requests
+| where timestamp > ago(1h)
+| summarize chamadas=count(), falhas=countif(success == false), media_ms=avg(duration) by name, resultCode
+
+// Execute a seguir no LOG ANALYTICS WORKSPACE (não no escopo restrito do App Insights).
+AzureMetrics
+| where TimeGenerated > ago(1h)
+| where ResourceProvider =~ "MICROSOFT.SQL"
+| where MetricName in ("cpu_percent", "dtu_consumption_percent", "sessions_percent", "storage_percent")
+| summarize media=avg(Average) by MetricName, bin(TimeGenerated, 1m)
+| render timechart
+
+// No mesmo workspace, se quiser consultar a telemetria do aplicativo diretamente:
+AppRequests
+| where TimeGenerated > ago(1h)
+| project TimeGenerated, Name, ResultCode, Success, DurationMs, OperationId
+| order by TimeGenerated desc

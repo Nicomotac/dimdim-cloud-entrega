@@ -1,0 +1,67 @@
+{
+  "nota": "IDs ilustrativos. Autentique e obtenha /api/csrf; mantenha cookies e token nas mutações. Exclua contas antes do cliente. GET/DELETE não têm body.",
+  "operacoes": [
+    {
+      "method": "POST",
+      "path": "/api/clientes",
+      "body": {
+        "nome": "Ana CP5",
+        "email": "ana.cp5@example.com"
+      },
+      "expectedStatus": 201
+    },
+    {
+      "method": "GET",
+      "path": "/api/clientes/1",
+      "body": null,
+      "expectedStatus": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/clientes/1",
+      "body": {
+        "nome": "Ana CP5 Atualizada",
+        "email": "ana.cp5@example.com"
+      },
+      "expectedStatus": 200
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/clientes/1",
+      "body": null,
+      "expectedStatus": 204
+    },
+    {
+      "method": "POST",
+      "path": "/api/contas",
+      "body": {
+        "clienteId": 1,
+        "numero": "CP5-001",
+        "saldo": 100.0
+      },
+      "expectedStatus": 201
+    },
+    {
+      "method": "GET",
+      "path": "/api/contas/1",
+      "body": null,
+      "expectedStatus": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/contas/1",
+      "body": {
+        "clienteId": 1,
+        "numero": "CP5-001-EDIT",
+        "saldo": 250.5
+      },
+      "expectedStatus": 200
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/contas/1",
+      "body": null,
+      "expectedStatus": 204
+    }
+  ]
+}
