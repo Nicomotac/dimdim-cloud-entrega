@@ -4,11 +4,11 @@ Aplicação web independente para gestão de clientes e contas, com interface em
 
 Este projeto foi criado para este checkpoint. Não reutiliza o projeto da Sprint 3. O recorte funcional adotado para DimDim é clientes e contas; confirme com o grupo se desejam outro recorte do estudo de caso.
 
-**Link do vídeo:** PREENCHER_COM_O_LINK_REAL_APOS_GRAVAR
+**Link do vídeo:** 
 
-**Link do aplicativo Azure:** PREENCHER_COM_A_URL_REAL_APOS_IMPLANTAR
+**Link do aplicativo Azure:** app-dimdim561857-cp5.azurewebsites.net
 
-**Integrantes:** PREENCHER_NOMES_E_RMS
+**Integrantes:** CAIO KENZO - RM562979 / ENZO VIEIRA - 563000 / NICOLAS MOTA - RM 561857
 
 ## 1. O que está implementado
 
