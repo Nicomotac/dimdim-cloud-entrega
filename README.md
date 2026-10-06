@@ -32,18 +32,9 @@ O GitHub Actions compila, executa os testes, autentica na Azure com OpenID Conne
 
 O agente Java do Application Insights coleta requisições, falhas e dependências JDBC. As métricas do banco vêm do Azure SQL/Azure Monitor; a configuração de diagnóstico as envia ao Log Analytics. **Uma dependência SQL no App Insights não substitui as métricas do banco nem o SELECT que comprova os dados.**
 
-## 3. Pré-requisitos
-
-- Conta GitHub e **um repositório novo**, separado da Sprint 3.
-- Assinatura Azure ativa com permissão para criar recursos. Para OIDC, permissão de criar registro de aplicativo/service principal no Microsoft Entra e atribuir papéis no grupo. Se a conta acadêmica bloquear isso, o administrador precisa autorizar/configurar a identidade; não tente contornar a restrição.
-- Git; Java 17 e Maven 3.9+ para compilar localmente. O GitHub Actions já instala o Java e fornece Maven.
-- **Azure Cloud Shell no modo Bash** para os scripts Azure. WSL com Azure CLI também funciona. Os `.sh` não são comandos de PowerShell/CMD.
-- Python 3 é utilizado internamente pelos scripts Azure CLI para montar configurações JSON e validar o IP. Está disponível no Azure Cloud Shell. A demonstração do CRUD é realizada pela interface + Query Editor, conforme seção 8; não exige instalar sqlcmd.
-
-
 **Custos:** App Service B1, Azure SQL Basic e ingestão de logs podem gerar cobrança. Verifique a política/regiões/quota e o saldo da assinatura antes de executar. O nome da região é configurável; nenhuma região/SKU é garantida para toda assinatura. Não apague recursos antes da correção.
 
-## 4. Publicar o código no GitHub
+## 3. Publicar o código no GitHub
 
 Extraia o ZIP e abra um terminal **dentro de `dimdim-cloud`**, onde está `pom.xml`. Crie no GitHub um repositório vazio chamado `dimdim-cloud`. Não inicialize o repositório remoto com README, pois este pacote já contém um.
 
@@ -61,7 +52,7 @@ Não use `--force`, não exclua `.git` de projetos existentes e não sobrescreva
 
 Se o repositório for privado, conceda acesso ao professor e valide o acesso ao vídeo. Nunca publique usuários/senhas/tokens de Azure, SQL ou aplicativo no README, workflow, vídeo ou código.
 
-## 5. Criar recursos por Azure CLI
+## 4. Criar recursos por Azure CLI
 
 Abra [Azure Portal](https://portal.azure.com), inicie o Cloud Shell e selecione **Bash**. Clone seu repositório; para um repo privado, autentique o GitHub sem colocar token na URL ou no vídeo.
 
@@ -108,7 +99,7 @@ As senhas são enviadas às configurações do App Service sem aparecer no outpu
 
 Para simplificar a primeira implantação acadêmica, a aplicação usa o login SQL criado no provisionamento, inclusive para o DDL. Em produção, separe o usuário de migração do usuário de runtime com permissões apenas de CRUD, além de adotar rede privada/identidade gerenciada conforme a arquitetura real. O laboratório contém apenas dados fictícios.
 
-## 6. Configurar OIDC e executar o GitHub Actions
+## 5. Configurar OIDC e executar o GitHub Actions
 
 No mesmo terminal:
 
@@ -142,7 +133,7 @@ Mostre no vídeo as etapas reais:
 
 O deploy ocorre por **GitHub Actions**. Azure CLI fica responsável pela infraestrutura/configuração. A execução em pull request apenas compila/testa; não publica.
 
-## 7. Abrir a aplicação
+## 6. Abrir a aplicação
 
 Abra `https://app-SEU_PREFIX-cp5.azurewebsites.net` e faça login com as credenciais do aplicativo definidas no script 01. Não use as credenciais SQL no formulário de login.
 
@@ -150,7 +141,7 @@ Cadastre um cliente antes de uma conta. E-mails e números de conta são únicos
 
 As alterações são gravadas via JDBC no Azure SQL. O front-end não armazena clientes/contas em localStorage. Recarregar o navegador ou reiniciar o App Service preserva os registros no banco.
 
-## 8. Provar cada CRUD diretamente no banco
+## 7. Provar cada CRUD diretamente no banco
 
 ### Demonstração manual, pela interface (faça no vídeo)
 
@@ -174,7 +165,7 @@ O READ não modifica registros: sua evidência é comparar o que a aplicação l
 
 Antes de apagar os registros, recarregue a página e, se quiser demonstrar persistência entre reinícios, reinicie o App Service pelo portal e mostre que os dados continuam lá. Essa comprovação extra não substitui as oito operações de CRUD.
 
-## 9. Mostrar o monitoramento do App e do banco
+## 8. Mostrar o monitoramento do App e do banco
 
 Gere as operações CRUD **após o deploy**. Abra Application Insights associado ao app e ajuste o período para a última hora. Telemetria tem atraso de ingestão; aguarde alguns minutos e atualize, sem substituir evidência real por tela vazia.
 
@@ -196,52 +187,6 @@ O agente é ativado por `APPLICATIONINSIGHTS_CONNECTION_STRING` e `ApplicationIn
 
 Os diagnósticos SQL estão configurados, mas certas categorias geram dados apenas quando há eventos correspondentes. Habilitar diagnósticos não equivale a ativar auditoria SQL. O requisito de monitorar o banco pode ser demonstrado com suas métricas reais, junto das dependências SQL no App Insights.
 
-## 10. Vídeo e entrega
-
-Siga `docs/roteiro-video.md`. Grave pelo menos em 720p, com explicação falada e texto legível. Inclua criação dos recursos, pipeline executando o deploy, aplicação em URL Azure, todas as consultas SQL do CRUD e monitoramento App/Banco com coletas reais.
-
-Preencha o link do vídeo no início deste README e envie a atualização ao GitHub. O PDF final deve se chamar **`NOME_DO_GRUPO_webapp.pdf`** e conter somente nome do grupo, RM/nome dos integrantes, link do GitHub e link do vídeo. Use `docs/conteudo-pdf.md` como modelo. Os demais artefatos ficam no repositório. Só o representante envia o PDF ao Teams.
-
-Antes de entregar, confirme que o professor abre repositório/vídeo e, se precisar acessar o app protegido, forneça o acesso por canal privado autorizado, nunca no código público. Mantenha os recursos funcionando até a avaliação.
-
-## 11. Compilar/testar localmente e limites da validação
-
-```bash
-mvn -B -ntp verify
-```
-
-Os testes MVC isolam o repositório e verificam autenticação, CSRF, validação, contratos HTTP e tratamento de conflito. **Não são testes de persistência nem evidência de deploy.** A validação real de persistência deve ser realizada depois da implantação, usando a interface e consultas independentes no Query Editor do Azure SQL após cada operação, conforme a seção 8.
-
-Para rodar localmente, seria necessário configurar `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `APP_USERNAME`, `APP_PASSWORD` e liberar seu IP no Azure SQL. O aplicativo continua usando Azure SQL, mas **a entrega/vídeo não podem usar localhost**. Por isso o caminho principal deste tutorial é o deploy Azure.
-
-## 12. Problemas comuns
-
-| Sintoma | Verificação/correção |
-|---|---|
-| `RequestDisallowedByAzure`, quota ou região | Confira regiões/SKUs permitidos pela assinatura; ajuste config antes de provisionar |
-| Nome global já usado | Escolha novo `PREFIX` antes de criar recursos; não altere no meio sem identificar o que já foi criado |
-| `Invalid runtime` | Liste `az webapp list-runtimes --os linux` e confira o identificador Java 17 disponível |
-| `Insufficient privileges` em Entra/RBAC | Solicite ao administrador a configuração/permissão necessária para OIDC |
-| `AADSTS700213` ou no matching federated identity | Confira owner/repo, branch `main`, tenant/client ID e subject da federação |
-| Workflow sem variáveis | Crie Repository Variables, não Secrets; nomes precisam coincidir com o YAML |
-| 502/503 no app | Confira falha de inicialização, JAR, JDBC URL, login SQL, firewall e DDL; abra Log stream sem expor dados sensíveis |
-| Login SQL falhou | Use o usuário SQL definido no script 01; não confunda com login do aplicativo |
-| SQL timeout/firewall | Libere o IP indicado pelo Query Editor e os IPs de saída do App Service; mudança de plano/região pode mudar esses IPs |
-| App Insights vazio | Faça tráfego, espere ingestão, confira componente/período/agente; reinicie após corrigir settings |
-| KQL não encontra `requests` | Você está no workspace; use AppRequests ou abra Logs no componente App Insights |
-| HTTP 403 no POST/PUT/DELETE | Sessão/token CSRF expirou ou foi omitido; atualize página ou obtenha `/api/csrf` mantendo cookies |
-| Query Editor desconectou | Autentique novamente e confira IP/regra de firewall |
-| Banco existe, tabelas não | O app ainda não iniciou com sucesso; confira DDL/startup ou execute `scripts/ddl.sql` no banco `dimdim` |
-
-Reexecutar o script 01 com o mesmo prefixo e as mesmas credenciais permite retomar parte de uma criação interrompida, mas não é um mecanismo de migração ou redefinição de senhas. Para rotacionar credenciais de um servidor existente, use o procedimento Azure apropriado e atualize as configurações do App Service.
-
-## 13. Encerrar depois da avaliação
-
-```bash
-bash scripts/99-remover-recursos.sh
-```
-
-O script exige digitar o nome exato do grupo e apaga também os dados do banco. Faça backup se necessário. O registro de aplicativo Entra não é apagado com o grupo: remova-o separadamente após confirmar que não está sendo usado. Até a correção, mantenha os recursos e acessos disponíveis.
 
 ## Referências oficiais
 
