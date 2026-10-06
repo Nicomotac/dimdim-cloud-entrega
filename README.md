@@ -1,19 +1,168 @@
-# DimDim Cloud — Checkpoint de Cloud
+# DimDim — CP5 de Cloud
 
-Aplicação web independente para gestão de clientes e contas, com interface em português, Java 17 / Spring Boot 3.5.16, persistência em **Azure SQL Database**, implantação por **GitHub Actions** e recursos criados com **Azure CLI**. O monitoramento do aplicativo usa **Application Insights**; o banco também possui métricas e diagnósticos no Azure Monitor / Log Analytics.
+Professor, este é o projeto do checkpoint de Cloud. A aplicação permite cadastrar clientes e gerenciar as contas vinculadas a eles. A ideia foi usar esse fluxo para demonstrar o CRUD nas duas tabelas, a persistência no Azure SQL e o monitoramento da aplicação.
 
-Este projeto foi criado para este checkpoint. Não reutiliza o projeto da Sprint 3. O recorte funcional adotado para DimDim é clientes e contas; confirme com o grupo se desejam outro recorte do estudo de caso.
+Usei Java 17 com Spring Boot, Azure CLI para criar os recursos e GitHub Actions para fazer o build e o deploy no App Service. O monitoramento ficou com o Application Insights e as métricas do Azure SQL.
 
+## Como o projeto funciona
 
-## Configuração privada com `.env`
+Depois do login, é possível cadastrar, consultar, editar e excluir clientes e contas pela interface.
 
-Copie `.env.example` para `.env` na raiz e preencha somente no seu computador ou Cloud Shell. Nunca crie o `.env` pelo editor do GitHub. Use valores entre aspas simples; não coloque comandos no arquivo, pois os scripts o carregam como Bash. O `.env` tem prioridade sobre `scripts/config.local.sh`.
+Cada conta pertence a um cliente. Por isso, o sistema não permite excluir um cliente que ainda tenha contas vinculadas. Também há validação de e-mail e número de conta únicos, além do bloqueio de saldo negativo.
 
-- Infraestrutura: `AZ_SUBSCRIPTION_ID`, `PREFIX`, `LOCATION` e os demais campos de recursos.
-- Provisionamento: `SQL_ADMIN`, `SQL_PASSWORD`, `APP_USERNAME` e `APP_PASSWORD`; vazios usam os prompts ocultos.
-- Execução local: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `APP_USERNAME` e `APP_PASSWORD`.
+Os dados ficam nas tabelas `Clientes` e `Contas` do Azure SQL Database. A interface consulta a API, que acessa o banco com JdbcTemplate. Os registros não ficam salvos no navegador.
 
-O Spring Boot deste projeto não lê `.env` automaticamente. Para iniciar localmente, preencha os cinco campos de execução e exporte-os no **Bash**, na raiz:
+## Arquitetura
+
+```mermaid
+flowchart TD
+    CLI["Azure CLI"] -->|"cria e configura"| AZ["Recursos Azure"]
+    GH["GitHub Actions"] -->|"publica o JAR"| APP["App Service · Java"]
+    USER["Navegador"] -->|"HTTPS"| APP
+    APP -->|"JDBC com TLS"| SQL["Azure SQL Database"]
+    APP -->|"telemetria"| AI["Application Insights"]
+    SQL -->|"métricas e diagnósticos"| MON["Azure Monitor / Log Analytics"]
+```
+
+O deploy usa um **publish profile**, guardado nos Secrets do GitHub Actions. O script de OIDC continua na pasta `scripts` como alternativa, mas não faz parte do fluxo atual.
+
+## Onde está cada parte
+
+| Arquivo ou pasta | Conteúdo |
+|---|---|
+| `src/main` | Código da aplicação e interface |
+| `src/test` | Testes da API |
+| `scripts/01-provisionar.sh` | Criação e configuração dos recursos na Azure |
+| `scripts/ddl.sql` | Criação das tabelas, chaves e relacionamento |
+| `scripts/verificar-persistencia.sql` | Consultas para conferir os dados após o CRUD |
+| `scripts/monitoramento.kql` | Consultas de monitoramento |
+| `.github/workflows/deploy.yml` | Build, testes, deploy e health check |
+| `docs/operacoes.http` e `docs/operacoes.json` | Exemplos das chamadas e dos dados enviados à API |
+| `docs/roteiro-video.md` | Sequência da demonstração |
+
+## Como executar na Azure
+
+Os comandos abaixo são para Bash, inclusive no Azure Cloud Shell. Para reproduzir o projeto, é preciso ter uma assinatura com permissão para criar os recursos.
+
+### 1. Baixar e configurar
+
+```bash
+git clone https://github.com/Nicomotac/dimdim-cloud-entrega.git
+cd dimdim-cloud-entrega
+cp .env.example .env
+chmod 600 .env
+```
+
+Preencha o `.env` local com os dados do seu ambiente:
+
+| Variável | Preenchimento |
+|---|---|
+| `AZ_SUBSCRIPTION_ID` | ID da assinatura |
+| `PREFIX` | Prefixo exclusivo, com 4 a 16 letras minúsculas ou números, começando por letra |
+| `LOCATION` | Região disponível na assinatura |
+| `GITHUB_REPOSITORY` | Dono e nome do repositório |
+| `GITHUB_BRANCH` | `main` |
+| `APP_SERVICE_SKU` | `B1` |
+| `SQL_SERVICE_OBJECTIVE` | `Basic` |
+
+Os campos `SQL_ADMIN`, `SQL_PASSWORD`, `APP_USERNAME` e `APP_PASSWORD` também podem ser preenchidos no `.env`. Se ficarem vazios, o script solicita os valores com entrada oculta. A senha do SQL precisa atender às regras da Azure.
+
+O `.env` fica fora do Git. O arquivo publicado é apenas o `.env.example`, sem credenciais. Use aspas simples nos valores e não coloque comandos no arquivo, pois ele é carregado pelo Bash. O formato antigo `scripts/config.local.sh` ainda funciona quando não existe um `.env`.
+
+### 2. Criar os recursos
+
+Fora do Cloud Shell, faça login com `az login`. Depois execute:
+
+```bash
+bash scripts/01-provisionar.sh
+```
+
+O script cria o grupo de recursos, plano do App Service, aplicação, servidor SQL, banco, Application Insights e Log Analytics. Também configura a conexão com o banco, o firewall SQL e os diagnósticos.
+
+O plano B1, o banco Basic e a coleta de logs podem consumir créditos da assinatura.
+
+### 3. Configurar o deploy
+
+No repositório, acesse **Settings → Secrets and variables → Actions** e cadastre:
+
+| Tipo | Nome | Valor |
+|---|---|---|
+| Variable | `AZURE_WEBAPP_NAME` | Nome do App Service |
+| Secret | `AZURE_WEBAPP_PUBLISH_PROFILE` | Conteúdo completo do perfil de publicação do App Service |
+
+O perfil de publicação contém credenciais e deve ficar somente no Secret. As senhas do banco e do aplicativo ficam nas configurações do App Service, preenchidas pelo script.
+
+Com isso configurado, execute o workflow pela aba **Actions**. Ele compila o projeto, roda os testes, publica o `app.jar` e consulta `/actuator/health` para verificar a saúde da aplicação e da conexão SQL.
+
+Build e deploy estão no mesmo job. Pushes na `main` disparam o fluxo; pull requests executam apenas o build e os testes.
+
+### 4. Abrir o aplicativo
+
+A URL segue o formato:
+
+```text
+https://app-SEU_PREFIX-cp5.azurewebsites.net
+```
+
+Entre com o usuário e a senha do aplicativo definidos no provisionamento. O login SQL é usado para acessar o banco, não para entrar na interface.
+
+Na primeira inicialização, o Spring executa o DDL e cria as tabelas caso ainda não existam. Um novo deploy ou reinício não apaga os registros.
+
+## CRUD e persistência
+
+As duas entidades possuem os mesmos tipos de operação:
+
+| Operação | Clientes | Contas |
+|---|---|---|
+| Criar | `POST /api/clientes` | `POST /api/contas` |
+| Listar | `GET /api/clientes` | `GET /api/contas` |
+| Consultar por ID | `GET /api/clientes/{id}` | `GET /api/contas/{id}` |
+| Atualizar | `PUT /api/clientes/{id}` | `PUT /api/contas/{id}` |
+| Excluir | `DELETE /api/clientes/{id}` | `DELETE /api/contas/{id}` |
+
+Para conferir a persistência, abra o **Query editor** do banco `dimdim` e execute estas consultas depois de cada operação na interface:
+
+```sql
+SELECT DB_NAME() AS banco, SYSUTCDATETIME() AS instante_utc;
+
+SELECT id, nome, email, criado_em
+FROM dbo.Clientes
+ORDER BY id;
+
+SELECT id, cliente_id, numero, saldo, criado_em
+FROM dbo.Contas
+ORDER BY id;
+```
+
+A sequência é cadastrar um cliente, consultar e editar seus dados; depois cadastrar, consultar e editar uma conta vinculada a ele. Para excluir, remova primeiro a conta e depois o cliente.
+
+Após cada inclusão ou edição, o SELECT permite conferir os valores gravados. Na consulta, os dados da tela devem corresponder aos do banco. Após a exclusão, o registro não deve mais aparecer.
+
+Se o acesso ao banco estiver bloqueado pelo firewall, o script `scripts/03-liberar-ip-sql.sh` permite cadastrar o IP do computador usado na consulta.
+
+## Monitoramento
+
+No **Application Insights**, as telas de Requests, Performance e Dependencies permitem acompanhar as requisições da aplicação, o tempo de resposta e as chamadas ao SQL. As consultas usadas para essa análise estão em `scripts/monitoramento.kql`.
+
+No **Azure SQL Database → Metrics**, é possível acompanhar CPU, DTU, sessões e armazenamento. Os diagnósticos também são enviados ao Log Analytics.
+
+A coleta pode levar alguns minutos para aparecer depois das operações. Para consultar o monitoramento pelo terminal:
+
+```bash
+bash scripts/04-monitorar.sh
+```
+
+## Testes e execução local
+
+Para compilar e rodar os testes:
+
+```bash
+mvn verify
+```
+
+Os testes da API usam o repositório simulado. A comprovação da persistência no Azure SQL é feita separadamente, executando o CRUD e os SELECTs no banco.
+
+Para abrir a aplicação localmente, é necessário Java 17, Maven e acesso ao Azure SQL. Preencha `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `APP_USERNAME` e `APP_PASSWORD` no `.env`. Depois, na raiz do projeto, execute em Bash:
 
 ```bash
 set +x
@@ -23,185 +172,14 @@ set +a
 mvn spring-boot:run
 ```
 
-Na Azure, a aplicação continua usando as configurações do App Service. O workflow atual usa a variável `AZURE_WEBAPP_NAME` e o secret `AZURE_WEBAPP_PUBLISH_PROFILE` do GitHub Actions; não envie `.env` ou arquivos `.PublishSettings` ao repositório. O script OIDC é uma alternativa antiga, não é necessário para esse workflow com publish profile.
+A aplicação abre em `http://localhost:8080`. O carregamento acima é necessário porque este projeto não lê o `.env` automaticamente pelo Spring.
 
-Para conferir a proteção, execute `git check-ignore .env` (deve mostrar `.env`) e `git ls-files .env` (não deve mostrar nada). Um arquivo já rastreado precisa ser retirado do índice com `git rm --cached .env` antes do commit. A alteração não exige executar novamente o provisionamento nem recriar recursos apagados.
+## Encerramento dos recursos
 
-**Histórico:** retirar dados dos arquivos atuais não os remove dos commits anteriores. Se uma senha, token ou perfil de publicação tiver sido publicado e ainda for válido, revogue ou troque a credencial no serviço correspondente. O ID da assinatura não é uma senha nem concede acesso por si só.
-
-## 1. O que está implementado
-
-| Exigência | Implementação / evidência |
-|---|---|
-| Web app Java ou .NET | Java + interface HTML/CSS/JavaScript com login |
-| Azure CLI + GitHub Actions | `scripts/01-provisionar.sh` e `.github/workflows/deploy.yml` |
-| Banco PaaS Azure SQL | Servidor lógico Azure SQL + database `dimdim`; sem container de banco |
-| Duas tabelas relacionadas | `Clientes` 1:N `Contas`, FK `Contas.cliente_id` |
-| CRUD em ambas | Interface e endpoints GET/POST/PUT/DELETE |
-| DDL e CLI em scripts | `scripts/ddl.sql` e arquivos `.sh` |
-| Monitoramento App Insights | Agente Java gerenciado no App Service Linux, requisições e dependências SQL |
-| Monitoramento do banco | CPU, DTU, sessões, armazenamento e diagnósticos para Log Analytics |
-| Persistência depois de cada operação | `scripts/verificar-persistencia.sql` e roteiro de vídeo pela interface |
-| Arquitetura | `docs/arquitetura.svg` |
-| Contratos HTTP/JSON | `docs/operacoes.http` e `docs/operacoes.json` |
-| Vídeo e PDF | Devem ser finalizados com execução real, nomes/RMs e links do grupo |
-
-## 2. Arquitetura
-
-![Arquitetura de implantação DimDim](docs/arquitetura.svg)
-
-O navegador acessa o App Service por HTTPS. A interface chama a API Java no mesmo domínio. O JdbcTemplate usa o driver Microsoft SQL Server com TLS para persistir em Azure SQL Database. O banco é um serviço PaaS independente do App Service.
-
-O GitHub Actions compila, executa os testes e publica o JAR no App Service usando um publish profile armazenado em GitHub Actions Secrets. O perfil não fica no código nem no `.env.example`.
-
-O agente Java do Application Insights coleta requisições, falhas e dependências JDBC. As métricas do banco vêm do Azure SQL/Azure Monitor; a configuração de diagnóstico as envia ao Log Analytics. **Uma dependência SQL no App Insights não substitui as métricas do banco nem o SELECT que comprova os dados.**
-
-**Custos:** App Service B1, Azure SQL Basic e ingestão de logs podem gerar cobrança. Verifique a política/regiões/quota e o saldo da assinatura antes de executar. O nome da região é configurável; nenhuma região/SKU é garantida para toda assinatura. Não apague recursos antes da correção.
-
-## 3. Publicar o código no GitHub
-
-Extraia o ZIP e abra um terminal **dentro de `dimdim-cloud`**, onde está `pom.xml`. Crie no GitHub um repositório vazio chamado `dimdim-cloud`. Não inicialize o repositório remoto com README, pois este pacote já contém um.
-
-Para esta pasta nova, sem histórico anterior:
+Quando o ambiente não for mais necessário, o script abaixo solicita o nome do grupo antes de excluir seus recursos, incluindo o banco e os dados:
 
 ```bash
-git init -b main
-git add .
-git commit -m "feat: aplicação DimDim e infraestrutura do checkpoint"
-git remote add origin https://github.com/SEU_USUARIO/dimdim-cloud.git
-git push -u origin main
+bash scripts/99-remover-recursos.sh
 ```
 
-Não use `--force`, não exclua `.git` de projetos existentes e não sobrescreva a Sprint 3. A pasta `.github/workflows` precisa estar no GitHub. A primeira execução automática pode compilar e falhar no deploy enquanto as variáveis Azure ainda não existem; isso é esperado nessa ordem inicial. Reexecute o workflow depois da seção 6.
-
-Se o repositório for privado, conceda acesso ao professor e valide o acesso ao vídeo. Nunca publique usuários/senhas/tokens de Azure, SQL ou aplicativo no README, workflow, vídeo ou código.
-
-## 4. Criar recursos por Azure CLI
-
-Abra [Azure Portal](https://portal.azure.com), inicie o Cloud Shell e selecione **Bash**. Clone seu repositório; para um repo privado, autentique o GitHub sem colocar token na URL ou no vídeo.
-
-```bash
-git clone https://github.com/SEU_USUARIO/dimdim-cloud.git
-cd dimdim-cloud
-az account list --query '[].{Assinatura:name,Id:id}' --output table
-cp .env.example .env
-chmod 600 .env
-code .env
-```
-
-Se o editor `code` não estiver disponível, use `nano .env`. Configure:
-
-| Campo | O que informar |
-|---|---|
-| `AZ_SUBSCRIPTION_ID` | ID real da assinatura selecionada |
-| `PREFIX` | De 4 a 16 letras minúsculas/números, iniciando com letra; use algo exclusivo como `dimdim` + RM |
-| `LOCATION` | Região permitida para App Service, SQL, Log Analytics e App Insights |
-| `GITHUB_REPOSITORY` | `SEU_USUARIO/dimdim-cloud`, com maiúsculas/minúsculas exatas |
-| `GITHUB_BRANCH` | `main` |
-| `APP_SERVICE_SKU` | `B1` por padrão |
-| `SQL_SERVICE_OBJECTIVE` | `Basic` por padrão |
-
-`.env` é local e ignorado pelo Git; apenas `.env.example`, com campos vazios, deve ser publicado. O formato antigo `scripts/config.local.sh` continua aceito quando não existe `.env`. Guarde seu prefixo e as credenciais em local seguro. No Cloud Shell a sessão geralmente já está autenticada. Fora dele, rode `az login`.
-
-```bash
-bash scripts/01-provisionar.sh
-```
-
-O script lê `SQL_ADMIN`, `SQL_PASSWORD`, `APP_USERNAME` e `APP_PASSWORD` do `.env`. Campos vazios são solicitados com entrada oculta. A senha do aplicativo precisa apenas estar preenchida: o script não exige mais 16 caracteres. Para o Azure SQL, a senha deve ter de 8 a 128 caracteres, conter ao menos três categorias entre maiúsculas, minúsculas, números e símbolos, e não conter o nome do administrador. A senha SQL `123` não é aceita pelo serviço. Informe as credenciais somente no `.env` local ou nos prompts; não grave senhas no código ou no repositório. O administrador SQL não deve se chamar `admin`, `sa`, `root` ou outro nome reservado. Não ative `set -x`/`--debug` nem exiba as configurações do app no vídeo.
-
-O script cria:
-
-1. Grupo `rg-PREFIX-cp5`.
-2. Log Analytics e Application Insights conectados.
-3. Servidor lógico `sql-PREFIX-cp5` e banco `dimdim`.
-4. Plano Linux e App Service Java 17 `app-PREFIX-cp5`.
-5. Firewall SQL para os possíveis IPs de saída do App Service.
-6. Configurações de conexão/login/telemetria e diagnósticos SQL.
-
-As senhas são enviadas às configurações do App Service sem aparecer no output dos comandos. O arquivo temporário usado pelo script é restrito e removido ao encerrar. A URL exibida só terá a aplicação após o deploy.
-
-**Inicialização do banco:** `scripts/ddl.sql` é incluído no JAR pelo Maven e executado pelo Spring na inicialização. Cria as duas tabelas somente se ainda não existirem; não apaga dados em novo deploy/restart. Não utiliza H2, Oracle ou banco containerizado. Para alterações futuras de estrutura, use migrações versionadas; o DDL inicial não altera tabelas já existentes.
-
-Para simplificar a primeira implantação acadêmica, a aplicação usa o login SQL criado no provisionamento, inclusive para o DDL. Em produção, separe o usuário de migração do usuário de runtime com permissões apenas de CRUD, além de adotar rede privada/identidade gerenciada conforme a arquitetura real. O laboratório contém apenas dados fictícios.
-
-## 5. Configurar o GitHub Actions
-
-O workflow atual usa **publish profile**, sem atribuir funções RBAC. O script `02-configurar-oidc.sh` é uma alternativa legada e não precisa ser executado para esse workflow.
-
-Em **Settings → Secrets and variables → Actions**, configure:
-
-| Tipo | Nome | Valor |
-|---|---|---|
-| Variable | `AZURE_WEBAPP_NAME` | Nome do App Service criado |
-| Secret | `AZURE_WEBAPP_PUBLISH_PROFILE` | Conteúdo completo do perfil de publicação baixado do App Service |
-
-O perfil é uma credencial: não o publique no repositório, README ou vídeo. Não copie as senhas do banco/aplicativo para o YAML; elas são configuradas no App Service pelo provisionamento.
-
-Com os recursos ativos, abra **Actions → Build, test and deploy DimDim → Run workflow → main**. Mostre no vídeo checkout, Java 17, `mvn verify`, armazenamento do JAR, deploy com `azure/webapps-deploy@v3` e health check `UP`. Build e deploy usam o mesmo job. Em pull requests, o workflow apenas compila e testa.
-
-Se os recursos já foram excluídos após a entrega, não execute um novo deploy para realizar esta limpeza do código.
-
-## 6. Abrir a aplicação
-
-Abra `https://app-SEU_PREFIX-cp5.azurewebsites.net` e faça login com as credenciais do aplicativo definidas no script 01. Não use as credenciais SQL no formulário de login.
-
-Cadastre um cliente antes de uma conta. E-mails e números de conta são únicos. Saldo não pode ser negativo. Excluir cliente com conta vinculada retorna HTTP 409. Exclua a conta primeiro e depois o cliente.
-
-As alterações são gravadas via JDBC no Azure SQL. O front-end não armazena clientes/contas em localStorage. Recarregar o navegador ou reiniciar o App Service preserva os registros no banco.
-
-## 7. Provar cada CRUD diretamente no banco
-
-### Demonstração manual, pela interface (faça no vídeo)
-
-No Portal, abra **SQL databases → dimdim → Query editor** e autentique-se sem mostrar credenciais na gravação. Se houver bloqueio de IP, adicione o IP do cliente indicado pelo portal em Networking do servidor ou execute `bash scripts/03-liberar-ip-sql.sh`.
-
-Abra lado a lado a aplicação publicada e o editor conectado ao banco `dimdim`. Em cada etapa execute o SELECT de `scripts/verificar-persistencia.sql`, ajustando os IDs reais:
-
-| Ordem | Operação na interface | Comprovação imediata no Azure SQL |
-|---|---|---|
-| 1 | Criar cliente Ana CP5 | Linha inserida em `dbo.Clientes` |
-| 2 | Consultar/listar cliente | Mesmo ID/nome/e-mail retornado no SELECT |
-| 3 | Editar nome do cliente | Novo nome persistido no mesmo ID |
-| 4 | Criar conta ligada ao cliente, saldo 100 | Linha em `dbo.Contas`; `cliente_id` correto |
-| 5 | Consultar/listar conta | Número, saldo e JOIN com cliente conferem |
-| 6 | Editar conta, saldo 250,50 | Novo saldo/número persistidos |
-| 7 | Tentar excluir cliente com conta | Mensagem de conflito; cliente e conta continuam presentes |
-| 8 | Excluir conta | SELECT pelo ID retorna **zero linhas** |
-| 9 | Excluir cliente | SELECT pelo ID retorna **zero linhas** |
-
-O READ não modifica registros: sua evidência é comparar o que a aplicação lê com o SELECT no banco. O DELETE comprova a remoção, não uma linha ainda existente. Não deixe todos os SELECTs para o fim: o professor exige comprovar **depois de cada operação**.
-
-Antes de apagar os registros, recarregue a página e, se quiser demonstrar persistência entre reinícios, reinicie o App Service pelo portal e mostre que os dados continuam lá. Essa comprovação extra não substitui as oito operações de CRUD.
-
-## 8. Mostrar o monitoramento do App e do banco
-
-Gere as operações CRUD **após o deploy**. Abra Application Insights associado ao app e ajuste o período para a última hora. Telemetria tem atraso de ingestão; aguarde alguns minutos e atualize, sem substituir evidência real por tela vazia.
-
-1. **Live Metrics:** tráfego enquanto você usa a interface.
-2. **Performance / Requests:** GET, POST, PUT e DELETE com tempo de resposta e status.
-3. **Application Map / Dependencies:** App Service/Java chamando Azure SQL.
-4. **Failures:** se executar o teste de conflito, explique os HTTP 409 e 404 esperados; eles não significam indisponibilidade.
-5. **Logs:** execute uma consulta por vez de `scripts/monitoramento.kql`, no escopo indicado nos comentários. Mostre `requests`, `dependencies` de tipo SQL e, se houver, a correlação `operation_Id`.
-6. **Azure SQL Database → Monitoring → Metrics:** mostre CPU percentage, DTU percentage, Sessions percentage e Data space used percent/storage. Se houver dúvida sobre nomes disponíveis, use `az monitor metrics list-definitions --resource ID_DO_BANCO`.
-7. **Log Analytics → Logs:** execute a consulta `AzureMetrics` do arquivo KQL. `requests/dependencies` são nomes no escopo Application Insights; no workspace os equivalentes são `AppRequests/AppDependencies`.
-
-Também pode consultar por CLI:
-
-```bash
-bash scripts/04-monitorar.sh
-```
-
-O agente é ativado por `APPLICATIONINSIGHTS_CONNECTION_STRING` e `ApplicationInsightsAgent_EXTENSION_VERSION=~3`. Amostragem de 100% foi configurada para as poucas operações do laboratório. Não foi adicionado um segundo SDK/agente para evitar telemetria duplicada. Não espere que o App Insights mostre valores completos de todas as linhas: use SELECT para isso.
-
-Os diagnósticos SQL estão configurados, mas certas categorias geram dados apenas quando há eventos correspondentes. Habilitar diagnósticos não equivale a ativar auditoria SQL. O requisito de monitorar o banco pode ser demonstrado com suas métricas reais, junto das dependências SQL no App Insights.
-
-
-## Referências oficiais
-
-- [Deploy App Service com GitHub Actions e OIDC](https://learn.microsoft.com/en-us/azure/app-service/deploy-github-actions)
-- [Credenciais federadas na Azure CLI](https://learn.microsoft.com/en-us/cli/azure/ad/app/federated-credential)
-- [Application Insights no App Service](https://learn.microsoft.com/en-us/azure/azure-monitor/app/codeless-app-service?tabs=java)
-- [Criar Application Insights baseado em workspace](https://learn.microsoft.com/en-us/azure/azure-monitor/app/create-workspace-resource)
-- [Azure SQL pela CLI](https://learn.microsoft.com/en-us/cli/azure/sql/db)
-- [Diagnostic settings](https://learn.microsoft.com/en-us/azure/azure-monitor/platform/diagnostic-settings)
-- [Azure Monitor metrics CLI](https://learn.microsoft.com/en-us/cli/azure/monitor/metrics)
+Se o ambiente já tiver sido removido, não é preciso recriá-lo para consultar o código ou atualizar a documentação.
