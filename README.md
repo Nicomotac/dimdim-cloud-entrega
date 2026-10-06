@@ -14,15 +14,7 @@ Os dados ficam nas tabelas `Clientes` e `Contas` do Azure SQL Database. A interf
 
 ## Arquitetura
 
-```mermaid
-flowchart TD
-    CLI["Azure CLI"] -->|"cria e configura"| AZ["Recursos Azure"]
-    GH["GitHub Actions"] -->|"publica o JAR"| APP["App Service · Java"]
-    USER["Navegador"] -->|"HTTPS"| APP
-    APP -->|"JDBC com TLS"| SQL["Azure SQL Database"]
-    APP -->|"telemetria"| AI["Application Insights"]
-    SQL -->|"métricas e diagnósticos"| MON["Azure Monitor / Log Analytics"]
-```
+![Arquitetura de implantação DimDim](docs/arquitetura.svg)
 
 O deploy usa um **publish profile**, guardado nos Secrets do GitHub Actions. O script de OIDC continua na pasta `scripts` como alternativa, mas não faz parte do fluxo atual.
 
