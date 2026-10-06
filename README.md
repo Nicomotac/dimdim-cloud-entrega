@@ -151,35 +151,3 @@ A coleta pode levar alguns minutos para aparecer depois das operações. Para co
 ```bash
 bash scripts/04-monitorar.sh
 ```
-
-## Testes e execução local
-
-Para compilar e rodar os testes:
-
-```bash
-mvn verify
-```
-
-Os testes da API usam o repositório simulado. A comprovação da persistência no Azure SQL é feita separadamente, executando o CRUD e os SELECTs no banco.
-
-Para abrir a aplicação localmente, é necessário Java 17, Maven e acesso ao Azure SQL. Preencha `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `APP_USERNAME` e `APP_PASSWORD` no `.env`. Depois, na raiz do projeto, execute em Bash:
-
-```bash
-set +x
-set -a
-source .env
-set +a
-mvn spring-boot:run
-```
-
-A aplicação abre em `http://localhost:8080`. O carregamento acima é necessário porque este projeto não lê o `.env` automaticamente pelo Spring.
-
-## Encerramento dos recursos
-
-Quando o ambiente não for mais necessário, o script abaixo solicita o nome do grupo antes de excluir seus recursos, incluindo o banco e os dados:
-
-```bash
-bash scripts/99-remover-recursos.sh
-```
-
-Se o ambiente já tiver sido removido, não é preciso recriá-lo para consultar o código ou atualizar a documentação.
