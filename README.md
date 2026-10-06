@@ -5,12 +5,36 @@ Aplicação web independente para gestão de clientes e contas, com interface em
 Este projeto foi criado para este checkpoint. Não reutiliza o projeto da Sprint 3. O recorte funcional adotado para DimDim é clientes e contas; confirme com o grupo se desejam outro recorte do estudo de caso.
 
 
+## Configuração privada com `.env`
+
+Copie `.env.example` para `.env` na raiz e preencha somente no seu computador ou Cloud Shell. Nunca crie o `.env` pelo editor do GitHub. Use valores entre aspas simples; não coloque comandos no arquivo, pois os scripts o carregam como Bash. O `.env` tem prioridade sobre `scripts/config.local.sh`.
+
+- Infraestrutura: `AZ_SUBSCRIPTION_ID`, `PREFIX`, `LOCATION` e os demais campos de recursos.
+- Provisionamento: `SQL_ADMIN`, `SQL_PASSWORD`, `APP_USERNAME` e `APP_PASSWORD`; vazios usam os prompts ocultos.
+- Execução local: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `APP_USERNAME` e `APP_PASSWORD`.
+
+O Spring Boot deste projeto não lê `.env` automaticamente. Para iniciar localmente, preencha os cinco campos de execução e exporte-os no **Bash**, na raiz:
+
+```bash
+set +x
+set -a
+source .env
+set +a
+mvn spring-boot:run
+```
+
+Na Azure, a aplicação continua usando as configurações do App Service. O workflow atual usa a variável `AZURE_WEBAPP_NAME` e o secret `AZURE_WEBAPP_PUBLISH_PROFILE` do GitHub Actions; não envie `.env` ou arquivos `.PublishSettings` ao repositório. O script OIDC é uma alternativa antiga, não é necessário para esse workflow com publish profile.
+
+Para conferir a proteção, execute `git check-ignore .env` (deve mostrar `.env`) e `git ls-files .env` (não deve mostrar nada). Um arquivo já rastreado precisa ser retirado do índice com `git rm --cached .env` antes do commit. A alteração não exige executar novamente o provisionamento nem recriar recursos apagados.
+
+**Histórico:** retirar dados dos arquivos atuais não os remove dos commits anteriores. Se uma senha, token ou perfil de publicação tiver sido publicado e ainda for válido, revogue ou troque a credencial no serviço correspondente. O ID da assinatura não é uma senha nem concede acesso por si só.
+
 ## 1. O que está implementado
 
 | Exigência | Implementação / evidência |
 |---|---|
 | Web app Java ou .NET | Java + interface HTML/CSS/JavaScript com login |
-| Azure CLI + GitHub Actions | `scripts/01-provisionar.sh`, `02-configurar-oidc.sh` e `.github/workflows/deploy.yml` |
+| Azure CLI + GitHub Actions | `scripts/01-provisionar.sh` e `.github/workflows/deploy.yml` |
 | Banco PaaS Azure SQL | Servidor lógico Azure SQL + database `dimdim`; sem container de banco |
 | Duas tabelas relacionadas | `Clientes` 1:N `Contas`, FK `Contas.cliente_id` |
 | CRUD em ambas | Interface e endpoints GET/POST/PUT/DELETE |
@@ -28,7 +52,7 @@ Este projeto foi criado para este checkpoint. Não reutiliza o projeto da Sprint
 
 O navegador acessa o App Service por HTTPS. A interface chama a API Java no mesmo domínio. O JdbcTemplate usa o driver Microsoft SQL Server com TLS para persistir em Azure SQL Database. O banco é um serviço PaaS independente do App Service.
 
-O GitHub Actions compila, executa os testes, autentica na Azure com OpenID Connect e publica o JAR no App Service. A identidade de deploy tem papel Contributor **somente no grupo de recursos deste laboratório**; não recebe esse papel na assinatura inteira. A identidade é confiada somente para `main` do repositório escolhido.
+O GitHub Actions compila, executa os testes e publica o JAR no App Service usando um publish profile armazenado em GitHub Actions Secrets. O perfil não fica no código nem no `.env.example`.
 
 O agente Java do Application Insights coleta requisições, falhas e dependências JDBC. As métricas do banco vêm do Azure SQL/Azure Monitor; a configuração de diagnóstico as envia ao Log Analytics. **Uma dependência SQL no App Insights não substitui as métricas do banco nem o SELECT que comprova os dados.**
 
@@ -60,11 +84,12 @@ Abra [Azure Portal](https://portal.azure.com), inicie o Cloud Shell e selecione 
 git clone https://github.com/SEU_USUARIO/dimdim-cloud.git
 cd dimdim-cloud
 az account list --query '[].{Assinatura:name,Id:id}' --output table
-cp scripts/config.example.sh scripts/config.local.sh
-code scripts/config.local.sh
+cp .env.example .env
+chmod 600 .env
+code .env
 ```
 
-Se o editor `code` não estiver disponível, use `nano scripts/config.local.sh`. Configure:
+Se o editor `code` não estiver disponível, use `nano .env`. Configure:
 
 | Campo | O que informar |
 |---|---|
@@ -76,13 +101,13 @@ Se o editor `code` não estiver disponível, use `nano scripts/config.local.sh`.
 | `APP_SERVICE_SKU` | `B1` por padrão |
 | `SQL_SERVICE_OBJECTIVE` | `Basic` por padrão |
 
-`config.local.sh` é ignorado pelo Git. Guarde seu prefixo e as credenciais em local seguro. No Cloud Shell a sessão geralmente já está autenticada. Fora dele, rode `az login`.
+`.env` é local e ignorado pelo Git; apenas `.env.example`, com campos vazios, deve ser publicado. O formato antigo `scripts/config.local.sh` continua aceito quando não existe `.env`. Guarde seu prefixo e as credenciais em local seguro. No Cloud Shell a sessão geralmente já está autenticada. Fora dele, rode `az login`.
 
 ```bash
 bash scripts/01-provisionar.sh
 ```
 
-O script pede usuário/senha SQL e usuário/senha do aplicativo com entrada oculta. A senha do aplicativo precisa apenas estar preenchida: o script não exige mais 16 caracteres. Para o Azure SQL, a senha deve ter de 8 a 128 caracteres, conter ao menos três categorias entre maiúsculas, minúsculas, números e símbolos, e não conter o nome do administrador. A senha SQL `123` não é aceita pelo serviço. Informe as credenciais nos prompts; não grave senhas no código ou no repositório. O administrador SQL não deve se chamar `admin`, `sa`, `root` ou outro nome reservado. Não ative `set -x`/`--debug` nem exiba as configurações do app no vídeo.
+O script lê `SQL_ADMIN`, `SQL_PASSWORD`, `APP_USERNAME` e `APP_PASSWORD` do `.env`. Campos vazios são solicitados com entrada oculta. A senha do aplicativo precisa apenas estar preenchida: o script não exige mais 16 caracteres. Para o Azure SQL, a senha deve ter de 8 a 128 caracteres, conter ao menos três categorias entre maiúsculas, minúsculas, números e símbolos, e não conter o nome do administrador. A senha SQL `123` não é aceita pelo serviço. Informe as credenciais somente no `.env` local ou nos prompts; não grave senhas no código ou no repositório. O administrador SQL não deve se chamar `admin`, `sa`, `root` ou outro nome reservado. Não ative `set -x`/`--debug` nem exiba as configurações do app no vídeo.
 
 O script cria:
 
@@ -99,39 +124,22 @@ As senhas são enviadas às configurações do App Service sem aparecer no outpu
 
 Para simplificar a primeira implantação acadêmica, a aplicação usa o login SQL criado no provisionamento, inclusive para o DDL. Em produção, separe o usuário de migração do usuário de runtime com permissões apenas de CRUD, além de adotar rede privada/identidade gerenciada conforme a arquitetura real. O laboratório contém apenas dados fictícios.
 
-## 5. Configurar OIDC e executar o GitHub Actions
+## 5. Configurar o GitHub Actions
 
-No mesmo terminal:
+O workflow atual usa **publish profile**, sem atribuir funções RBAC. O script `02-configurar-oidc.sh` é uma alternativa legada e não precisa ser executado para esse workflow.
 
-```bash
-bash scripts/02-configurar-oidc.sh
-```
+Em **Settings → Secrets and variables → Actions**, configure:
 
-O script cria/reutiliza um registro de aplicativo Entra exclusivo do laboratório, seu service principal, credencial federada da branch `main` e permissão Contributor no grupo. Não cria segredo de cliente. A conta que executa precisa das permissões descritas nos pré-requisitos.
+| Tipo | Nome | Valor |
+|---|---|---|
+| Variable | `AZURE_WEBAPP_NAME` | Nome do App Service criado |
+| Secret | `AZURE_WEBAPP_PUBLISH_PROFILE` | Conteúdo completo do perfil de publicação baixado do App Service |
 
-Copie os quatro identificadores exibidos para **GitHub → repositório → Settings → Secrets and variables → Actions → Variables → New repository variable**:
+O perfil é uma credencial: não o publique no repositório, README ou vídeo. Não copie as senhas do banco/aplicativo para o YAML; elas são configuradas no App Service pelo provisionamento.
 
-| Variable | Origem |
-|---|---|
-| `AZURE_CLIENT_ID` | Saída do script 02 |
-| `AZURE_TENANT_ID` | Saída do script 02 |
-| `AZURE_SUBSCRIPTION_ID` | Saída do script 02 |
-| `AZURE_WEBAPP_NAME` | Saída do script 02 |
+Com os recursos ativos, abra **Actions → Build, test and deploy DimDim → Run workflow → main**. Mostre no vídeo checkout, Java 17, `mvn verify`, armazenamento do JAR, deploy com `azure/webapps-deploy@v3` e health check `UP`. Build e deploy usam o mesmo job. Em pull requests, o workflow apenas compila e testa.
 
-O YAML usa `vars`, portanto cadastre em **Variables**, não em Secrets. Não adicione usuário/senha SQL ao GitHub. Eles já foram configurados no App Service. Também não é necessário publish profile.
-
-No GitHub, vá a **Actions → Build, test and deploy DimDim → Run workflow → main**. Se o OIDC acabou de ser criado, a propagação de permissões pode levar alguns minutos; aguarde e reexecute caso receba erro de autorização transitório.
-
-Mostre no vídeo as etapas reais:
-
-1. Checkout e Java 17.
-2. `mvn verify`: compilação e testes.
-3. Upload/download do JAR `app.jar`.
-4. Login Azure via OIDC.
-5. `azure/webapps-deploy@v3` implantando no App Service.
-6. Consulta HTTPS ao `/actuator/health` retornando `UP`, incluindo a saúde da conexão SQL.
-
-O deploy ocorre por **GitHub Actions**. Azure CLI fica responsável pela infraestrutura/configuração. A execução em pull request apenas compila/testa; não publica.
+Se os recursos já foram excluídos após a entrega, não execute um novo deploy para realizar esta limpeza do código.
 
 ## 6. Abrir a aplicação
 

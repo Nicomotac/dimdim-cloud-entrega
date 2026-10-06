@@ -5,10 +5,18 @@ source "$(dirname "$0")/common.sh"
 command -v python3 >/dev/null
 echo "Criando recursos de laboratório em $RG / $LOCATION. App Service, SQL e logs podem gerar cobrança."
 echo 'As próximas entradas ficam ocultas; não grave a tela com configurações/credenciais abertas.'
-read -rs -p 'Administrador SQL (nome exclusivo, não use admin/sa): ' SQL_ADMIN; echo
-read -rs -p 'Senha SQL (8 a 128 caracteres, conforme politica Azure): ' SQL_PASSWORD; echo
-read -rs -p 'Usuário para entrar no DimDim: ' APP_USERNAME; echo
-read -rs -p 'Senha de acesso ao DimDim: ' APP_PASSWORD; echo
+if [[ -z "${SQL_ADMIN:-}" ]]; then
+  read -rs -p 'Administrador SQL (nome exclusivo, não use admin/sa): ' SQL_ADMIN; echo
+fi
+if [[ -z "${SQL_PASSWORD:-}" ]]; then
+  read -rs -p 'Senha SQL (8 a 128 caracteres, conforme politica Azure): ' SQL_PASSWORD; echo
+fi
+if [[ -z "${APP_USERNAME:-}" ]]; then
+  read -rs -p 'Usuário para entrar no DimDim: ' APP_USERNAME; echo
+fi
+if [[ -z "${APP_PASSWORD:-}" ]]; then
+  read -rs -p 'Senha de acesso ao DimDim: ' APP_PASSWORD; echo
+fi
 [[ -n "$SQL_ADMIN" && -n "$APP_USERNAME" && -n "$SQL_PASSWORD" && -n "$APP_PASSWORD" ]] || { echo 'Preencha os quatro campos.' >&2; exit 1; }
 export SQL_ADMIN SQL_PASSWORD APP_USERNAME APP_PASSWORD
 python3 - <<'VALIDAR_SQL'

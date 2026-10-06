@@ -1,7 +1,7 @@
 target/
 .env
 .env.*
-!*.example
+!.env.example
 scripts/config.local.sh
 *.log
 .idea/
@@ -11,3 +11,7 @@ __pycache__/
 evidencias/
 docs/entrega.json
 *_webapp.pdf
+
+# Perfis de publicação contêm credenciais de deploy.
+*.[Pp]ublish[Ss]ettings
+*.publishsettings

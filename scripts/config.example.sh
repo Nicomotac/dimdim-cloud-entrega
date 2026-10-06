@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# Copie para config.local.sh. Apenas nomes/IDs, nunca senhas.
-export AZ_SUBSCRIPTION_ID="805792c9-f0bc-4350-88ad-c668bb23b058"
-export PREFIX="dimdim561857" 
-export LOCATION="canadacentral" 
-export GITHUB_REPOSITORY="Nicomotac/dimdim-cloud-entrega"
+# Formato legado: prefira copiar .env.example para .env na raiz.
+# Se usar config.local.sh, preencha somente na cópia ignorada pelo Git.
+export AZ_SUBSCRIPTION_ID=""
+export PREFIX=""
+export LOCATION="canadacentral"
+export GITHUB_REPOSITORY=""
 export GITHUB_BRANCH="main"
 export APP_SERVICE_SKU="B1"
 export SQL_SERVICE_OBJECTIVE="Basic"
